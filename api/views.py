@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 from .models import Wishlist, User, Book, CartItem
+from .models import Comment, Rating
 
 
 @csrf_exempt
@@ -189,4 +190,85 @@ def discount_books(request):
         "publisher": publisher,
         "discountPercent": discount_percent,
         "updated_books": updated
+    })
+
+@csrf_exempt
+def create_comment(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST only"}, status=405)
+
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    user_id = data.get("userId")
+    book_id = data.get("bookId")
+    comment_text = data.get("comment")
+
+    if not user_id or not book_id or not comment_text:
+        return JsonResponse({"error": "userId, bookId, comment required"}, status=400)
+
+    try:
+        user = User.objects.get(id=user_id)
+        book = Book.objects.get(id=book_id)
+    except User.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
+    except Book.DoesNotExist:
+        return JsonResponse({"error": "Book not found"}, status=404)
+
+    comment = Comment.objects.create(
+        user=user,
+        book=book,
+        comment=comment_text
+    )
+
+    return JsonResponse({
+        "message": "Comment created",
+        "commentId": comment.id
+    }, status=201)
+
+def get_book_comments(request, book_id):
+    if request.method != "GET":
+        return JsonResponse({"error": "GET only"}, status=405)
+
+    try:
+        book = Book.objects.get(id=book_id)
+    except Book.DoesNotExist:
+        return JsonResponse({"error": "Book not found"}, status=404)
+
+    comments = Comment.objects.filter(book=book).order_by("-created_at")
+
+    data = [
+        {
+            "id": c.id,
+            "userId": c.user.id,
+            "username": c.user.username,
+            "comment": c.comment,
+            "created_at": c.created_at
+        }
+        for c in comments
+    ]
+
+    return JsonResponse(data, safe=False)
+
+def get_average_rating(request, book_id):
+    if request.method != "GET":
+        return JsonResponse({"error": "GET only"}, status=405)
+
+    ratings = Rating.objects.filter(book_id=book_id)
+
+    if ratings.count() == 0:
+        return JsonResponse({
+            "bookId": book_id,
+            "average_rating": 0,
+            "number_of_ratings": 0
+        })
+
+    avg = sum(r.rating for r in ratings) / ratings.count()
+
+    return JsonResponse({
+        "bookId": book_id,
+        "average_rating": round(avg, 2),
+        "number_of_ratings": ratings.count()
     })

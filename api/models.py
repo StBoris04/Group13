@@ -3,7 +3,7 @@ from django.db import models
 class User(models.Model):
     username = models.CharField(max_length=50, unique=True)
     password = models.CharField(max_length=128)
-    # email = models.CharField(max_length=128, blank=True, null=True)
+    
 
     def __str__(self):
         return self.username
@@ -15,6 +15,7 @@ class Wishlist(models.Model):
 
     def __str__(self):
         return f"{self.user_id} - {self.name}"
+
 
 class Book(models.Model):
     isbn = models.CharField(max_length=13, unique=True)
@@ -28,6 +29,7 @@ class Book(models.Model):
     def __str__(self):
         return self.title
 
+
 class CartItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     book = models.ForeignKey(Book, on_delete=models.CASCADE)
@@ -36,9 +38,10 @@ class CartItem(models.Model):
     def __str__(self):
         return "cart item"
 
+
 class Rating(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="ratings")
     rating = models.IntegerField()
 
     def __str__(self):
@@ -53,3 +56,11 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment by {self.user_id} on {self.book_id}"
+
+
+class WishlistItem(models.Model):
+    wishlist = models.ForeignKey(Wishlist, on_delete=models.CASCADE)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"Wishlist {self.wishlist_id} - Book {self.book_id}"

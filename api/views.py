@@ -1,9 +1,9 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .models import Wishlist, User, Book, CartItem
-from .models import Comment, Rating
-
+# from .models import Wishlist, User, Book, CartItem
+# from .models import Comment, Rating
+from .models import Wishlist, User, Book, CartItem, Comment, Rating, WishlistItem
 
 @csrf_exempt
 def create_wishlist(request):
@@ -251,7 +251,7 @@ def get_book_comments(request, book_id):
     ]
 
     return JsonResponse(data, safe=False)
-
+    
 def get_average_rating(request, book_id):
     if request.method != "GET":
         return JsonResponse({"error": "GET only"}, status=405)
@@ -272,3 +272,37 @@ def get_average_rating(request, book_id):
         "average_rating": round(avg, 2),
         "number_of_ratings": ratings.count()
     })
+
+
+@csrf_exempt
+def add_book_to_wishlist(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST only"}, status=405)
+
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    wishlist_id = data.get("wishlistId")
+    book_id = data.get("bookId")
+
+    if not wishlist_id or not book_id:
+        return JsonResponse({"error": "wishlistId and bookId required"}, status=400)
+
+    try:
+        wishlist = Wishlist.objects.get(id=wishlist_id)
+    except Wishlist.DoesNotExist:
+        return JsonResponse({"error": "Wishlist not found"}, status=404)
+
+    try:
+        book = Book.objects.get(id=book_id)
+    except Book.DoesNotExist:
+        return JsonResponse({"error": "Book not found"}, status=404)
+
+    wishlist_item = WishlistItem.objects.create(wishlist=wishlist, book=book)
+
+    return JsonResponse({
+        "message": "Book added to wishlist",
+        "wishlistItemId": wishlist_item.id
+    }, status=201)

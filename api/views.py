@@ -43,6 +43,47 @@ def create_user(request):
     )
     return JsonResponse({'success': True, 'id': user.id})
 
+def get_user(request, user_id):
+    if request.method != "GET":
+        return JsonResponse({"error": "Invalid method"}, status=405)
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
+
+    return JsonResponse({
+        "id": user.id,
+        "username": user.username,
+        # "email": user.email
+    })
+
+def update_user(request, user_id):
+    if request.method != "PATCH":
+        return JsonResponse({"error": "Invalid method"}, status=405)
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
+
+    data = json.loads(request.body or "{}")
+
+    username = data.get("username")
+    password = data.get("password")
+    # email = data.get("email")
+
+    if username:
+        user.username = username
+    if password:
+        user.password = password
+    # if email:
+    #     user.email = email
+
+    user.save()
+
+    return JsonResponse({"success": True})
+
 def books_by_genre(request, genre):
     if request.method != "GET":
         return JsonResponse({"error": "Invalid method"}, status=405)
@@ -272,6 +313,30 @@ def get_average_rating(request, book_id):
         "average_rating": round(avg, 2),
         "number_of_ratings": ratings.count()
     })
+
+def add_credit_card(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST only"}, status=405)
+
+    data = json.loads(request.body or "{}")
+
+    user_id = data.get("userId")
+    card_number = data.get("cardNumber")
+    expiry_date = data.get("expiryDate")
+    cvv = data.get("cvv")
+
+    if not user_id or not card_number or not expiry_date or not cvv:
+        return JsonResponse({"error": "All fields are required"}, status=400)
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
+
+    # Here you would normally save the credit card info securely
+    # For this example, we'll just return a success message
+
+    return JsonResponse({"message": "Credit card added successfully"}, status=201)
 
 
 @csrf_exempt
